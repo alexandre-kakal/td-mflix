@@ -259,3 +259,192 @@ db.movies.countDocuments({ cast: { $size: 4 } })
 ```
 22389
 ```
+
+### 14. Nombre de documents associés à chaque genre, triés par ordre décroissant
+
+**Commande :**
+
+```bash
+db.movies.aggregate([
+  { $unwind: "$genres" },
+  { $group: { _id: "$genres", count: { $sum: 1 } } },
+  { $sort: { count: -1 } }
+])
+```
+
+**Exemple de sortie :**
+
+```json
+[
+  { "_id": "Drama", "count": 13789 },
+  { "_id": "Comedy", "count": 7024 },
+  { "_id": "Romance", "count": 3665 },
+  { "_id": "Crime", "count": 2678 },
+  { "_id": "Thriller", "count": 2658 },
+  { "_id": "Action", "count": 2539 },
+  { "_id": "Documentary", "count": 2129 },
+  { "_id": "Adventure", "count": 2045 },
+  ...
+]
+```
+
+---
+
+### 15. Statistiques globales sur la collection movies
+
+**Commande :**
+
+```bash
+db.movies.aggregate([
+  {
+    $group: {
+      _id: null,
+      count: { $sum: 1 },
+      totalAwards: { $sum: "$awards.wins" },
+      averageNominations: { $avg: "$awards.nominations" },
+      averageAwards: { $avg: "$awards.wins" }
+    }
+  },
+  {
+    $project: { _id: 0, count: 1, totalAwards: 1, averageNominations: 1, averageAwards: 1 }
+  }
+])
+```
+
+**Exemple de sortie :**
+
+```json
+[
+  {
+    "count": 23539,
+    "totalAwards": 96770,
+    "averageNominations": 4.776031267258592,
+    "averageAwards": 4.111049747228004
+  }
+]
+```
+
+---
+
+### 16. Afficher le nombre d'acteurs au casting pour chaque document
+
+**Commande :**
+
+```bash
+db.movies.aggregate([
+  {
+    $project: {
+      title: 1,
+      castTotal: { $size: "$cast" }
+    }
+  }
+])
+```
+
+**Exemple de sortie (premiers documents) :**
+
+```json
+[
+  {
+    "_id": ObjectId("573a1390f29313caabcd446f"),
+    "title": "A Corner in Wheat",
+    "castTotal": 4
+  },
+  {
+    "_id": ObjectId("573a1390f29313caabcd42e8"),
+    "title": "The Great Train Robbery",
+    "castTotal": 4
+  },
+  {
+    "_id": ObjectId("573a1390f29313caabcd548c"),
+    "title": "The Birth of a Nation",
+    "castTotal": 4
+  },
+  ...
+]
+```
+
+---
+
+### 17. Films sortis entre 2000 et 2010 avec une note IMDB supérieure à 8 et plus de 10 récompenses
+
+**Commande :**
+
+```bash
+db.movies.find({
+  year: { $gte: 2000, $lte: 2010 },
+  "imdb.rating": { $gt: 8 },
+  "awards.wins": { $gt: 10 }
+})
+```
+
+**Exemple de sortie (premier film correspondant) :**
+
+```json
+[
+  {
+    "_id": ObjectId("573a139af29313caabcf0782"),
+    "fullplot": "Set in Hong Kong, 1962, Chow Mo-Wan is a newspaper editor who moves into a new building with his wife. At the same time, Su Li-zhen, a beautiful secretary and her executive husband also move in to the crowded building. With their spouses often away, Chow and Li-zhen spend most of their time together as friends. They have everything in common from noodle shops to martial arts. Soon, they are shocked to discover that their spouses are having an affair. Hurt and angry, they find comfort in their growing friendship even as they resolve not to be like their unfaithful mates.",
+    "imdb": { "rating": 8.1, "votes": 67663, "id": 118694 },
+    "year": 2000,
+    "plot": "Two neighbors, a woman and a man, form a strong bond after both suspect extramarital activities of their spouses. However, they agree to keep their bond platonic so as not to commit similar wrongs.",
+    "genres": [ "Drama", "Romance" ],
+    "rated": "PG",
+    "metacritic": 85,
+    "title": "In the Mood for Love",
+    "lastupdated": "2015-09-15 05:14:09.273000000",
+    "languages": [ "Cantonese", "Shanghainese", "French" ],
+    "writers": [ "Kar Wai Wong" ],
+    "type": "movie",
+    "tomatoes": { ... },
+    "poster": "https://m.media-amazon.com/images/...",
+    "num_mflix_comments": 1,
+    "released": ISODate("2001-03-09T00:00:00.000Z"),
+    "awards": {
+      "wins": 49,
+      "nominations": 33,
+      "text": "Nominated for 1 BAFTA Film Award. Another 48 wins & 33 nominations."
+    },
+    "countries": [ "Hong Kong", "China" ],
+    "cast": [
+      "Maggie Cheung",
+      "Tony Chiu Wai Leung",
+      "Ping Lam Siu",
+      "Tung Cho 'Joe' Cheung"
+    ],
+    "directors": [ "Kar Wai Wong" ],
+    "runtime": 98
+  },
+  ...
+]
+```
+
+---
+
+### 18. Nouvelle question proposée : Pour chaque genre, quel est le film le mieux noté ?
+
+**Commande :**
+
+```bash
+db.movies.aggregate([
+  { $unwind: "$genres" },
+  { $sort: { "imdb.rating": -1 } },
+  { $group: {
+      _id: "$genres",
+      bestMovie: { $first: "$title" },
+      rating: { $first: "$imdb.rating" }
+  }},
+  { $project: { _id: 0, genre: "$_id", bestMovie: 1, rating: 1 } }
+])
+```
+
+**Exemple de sortie :**
+
+```json
+[
+  { "bestMovie": "Prerokbe Ognja", "rating": 9, "genre": "Music" },
+  { "bestMovie": "Most Likely to Succeed", "rating": 8.9, "genre": "News" },
+  { "bestMovie": "The Late Shift", "rating": 7, "genre": "Talk-Show" },
+  ...
+]
+```
